@@ -1,0 +1,44 @@
+open PosixFileSystem;
+include "GZ/gz";
+open GZ;
+      
+match System::args() with
+|Cons (_,?files) => {
+  for file in files do
+    var fd = open(file,O_RDONLY);
+    zcat(fd);
+  done
+}
+|_ => { 
+  zcat(fd0);
+}
+endmatch;
+
+proc zcat(fd:posix_file) {
+  match gzdopen(fd,Read) with
+  |Some ?gzh => { 
+    var reader = gzreader(gzh,size(1024));
+    
+    while true do
+      match (reader()) with
+        |GZ_OK (?bytes,?data) => { print$ str(data); } 
+        |GZ_NONE => {  goto finish; }
+        |GZ_ERR (?code,?s) => { 
+          eprintln("Error decompressing stream:"+s); 
+          System::exit(-1);  
+        }
+      endmatch;
+    done
+finish:>
+    gzclose(gzh);
+  }
+  |_ => { 
+    eprintln$ "Error opening compresses stream";
+    System::exit(-1);
+  }
+  endmatch;
+}
+
+
+
+
