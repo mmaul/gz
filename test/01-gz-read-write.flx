@@ -1,0 +1,108 @@
+//$ 01-gz-read-write.flx - test for GZ/gz
+//$ Author Mike Maul
+//$ See README.md for more details
+include "PKGTOOL/pkgtool";
+open PkgTool;
+open PosixFileSystem;
+include "GZ/gz";
+
+open GZ;
+
+var infile ="GZ/gz.flx";
+var infh = fopen_input(infile);
+var plain_text = load(infh);
+fclose(infh);
+var outfile ="test/gz.gz";
+test_title("compressing plain text file");
+var outfd = wopen(outfile);
+if not valid(outfd) do
+  test_result(false);
+  test_fail("Error opening "+outfile);
+done
+match gzdopen(outfd,Write) with
+|Some ?gzh => { 
+  if valid(outfd) do
+    // Make int more interesting chop it into 32 byte chunks
+    var chunk_size = 32;
+    var plain_text_len = len(plain_text);
+    var chunks = int(plain_text_len) / chunk_size;
+    var rem = int(len(plain_text)) % chunk_size;
+    for var n in 0 upto chunks do
+      var pos = n * chunk_size;
+      var endpos = pos+chunk_size;
+      var sz = size(if (endpos > int(plain_text_len)) then rem else chunk_size endif);
+      
+      if gzwrite(gzh,cstr(plain_text.[pos to (pos + int(sz))]),sz) == 0 do
+        var err1 = 0;
+        test_result(false);
+        cleanup();
+        test_fail("Error writing to gzip file:"+gzerror(gzh,&err1) "/"+str(err1));
+      done
+   done
+   if not gzflush(gzh,Z_FINISH) == Z_OK do
+     var err2 = 0;
+     test_result(false);
+     cleanup();
+     test_fail("Error flushing to gzip file:"+gzerror(gzh,&err2) +"/"+str(err2));
+   done
+   gzclose(gzh);
+    
+  else
+    test_result(false);
+    cleanup();
+    test_fail("Error opening input file:"+infile);
+  done
+}
+|_ => { 
+     test_result(false);
+     cleanup();
+     test_fail("Error in gzdopen file:");
+      }
+endmatch;
+test_result(true);
+
+
+var fd = open(outfile,O_RDONLY);
+test_title("Comparing compressed againt original file");
+match gzdopen(fd,Read) with
+|Some ?gzh => {
+  var reader = gzreader(gzh,size(256));
+  var doc = "";
+  while true do
+    match (reader()) with
+    |GZ_OK (?bytes,?data) => { doc += str(data); } 
+    |GZ_NONE => {  goto finish; }
+    |GZ_ERR (?code,?str) => { test_result(false); System::exit(0);  }
+    endmatch;
+  done
+finish:>
+  test_result(true);
+  gzclose(gzh);
+// Now see if decompression matches original
+  var fh = fopen_input("README.md");
+  if valid(fh) do
+    assert_true(doc == plain_text,"gunzip'd matches original");
+    fclose(fh);
+  else
+    test_result(false);
+    cleanup();
+    test_fail("Error opening validation file: README.md");
+  done
+}
+|_ => { 
+  test_result(false);
+  cleanup();
+  test_fail("Error opening compressed data:"+outfile); 
+}
+endmatch;
+cleanup();
+proc cleanup() {
+  match filetype(outfile) with
+  |REGULAR => {
+    if not FileSystem::unlink_file(outfile) == 0 do
+      warning("Error removing "+outfile);
+    done
+  }
+  |_ => {}
+  endmatch;
+}

@@ -1,0 +1,134 @@
+//$ gz.flx - binding to gz(open|read|write) functionality of zlib
+//$ Author Mike Maul
+//$ See README.md for more details
+requires package "gz";
+class GZ {
+
+//#### Types
+  //$ handle to gzip object
+  type gz_file = "gzFile";
+
+  //$ gzip file mode
+  union gz_file_mode = 
+    |Read
+    |Write;
+  instance Str[gz_file_mode] {
+    fun str (mode:gz_file_mode) : string => match mode with |Read => "r" |Write => "w" endmatch;
+  }
+
+  //$ wrapped result code
+  union gz_result[T] = 
+  |GZ_OK of int*T
+  |GZ_ERR of int*string
+  |GZ_NONE;
+
+//#### Consts
+  const Z_NO_FLUSH:int;
+  const Z_PARTIAL_FLUSH:int; 
+  const Z_SYNC_FLUSH:int;    
+  const Z_FULL_FLUSH:int;    
+  const Z_FINISH:int;        
+  const Z_BLOCK:int;         
+  const Z_TREES:int;         
+/* Allowed flush values; see deflate() and inflate() below for details */
+
+  const Z_OK:int;            
+  const Z_STREAM_END:int;    
+  const Z_NEED_DICT:int;     
+  const Z_ERRNO:int;        
+  const Z_STREAM_ERROR:int; 
+  const Z_DATA_ERROR:int;   
+  const Z_MEM_ERROR:int;    
+  const Z_BUF_ERROR:int;    
+  const Z_VERSION_ERROR:int; 
+/* Return codes for the compression/decompression functions. Negative values
+ * are errors, positive values are used for special but normal events.
+ */
+
+  const Z_NO_COMPRESSION:int;         
+  const Z_BEST_SPEED:int;             
+  const Z_BEST_COMPRESSION:int;       
+  const Z_DEFAULT_COMPRESSION:int;  
+/* compression levels */
+
+  const Z_FILTERED:int;            
+  const Z_HUFFMAN_ONLY:int;        
+  const Z_RLE:int;                 
+  const Z_FIXED:int;               
+  const Z_DEFAULT_STRATEGY:int;    
+/* compression strategy; see deflateInit2() below for details */
+
+  const Z_BINARY:int;   
+  const Z_TEXT:int;     
+  const Z_ASCII:int;    /* for compatibility with 1.2.2 and earlier */
+  const Z_UNKNOWN:int;  
+/* Possible values of the data_type field (though see inflate()) */
+
+  const Z_DEFLATED:int;   
+/* The deflate compression method (the only one supported in this version) */
+
+  const Z_NULL:int;    /* for initializing zalloc, zfree, opaque */
+
+//#### Code
+  //$ validity test for gz_file handle
+  fun valid:gz_file->bool = "!($1 == 0)";
+
+  fun gzdopen_c:posix_file*string->gz_file = "gzdopen($1,strdup($2.c_str()))";
+
+  // Opens gzip file use this don't use gdzopen_c
+  fun gzdopen(s:posix_file,mode:gz_file_mode) = {
+    var gzf = gzdopen_c(s, str(mode));
+    return if not valid(gzf) then None[gz_file] else Some gzf endif;
+  } 
+
+  //$ get uncompressed data from gz_file. Place requested number of bytes
+  //$ in supplied carray. gzreader will take care of all the bookkeeping
+  //$ you probably want to use that instead.
+  fun gzread:gz_file*+char*size->int = "gzread($1,$2,static_cast<int>($3))";
+
+  //$ Check for end of file
+  fun gzeof:gz_file->bool = "(gzeof($1) > 0)";
+
+  //$ get error string from zlib
+  fun gzerror:gz_file*&int->string = "gzerror($1,$2)";
+
+  //$ Close gz_file handle
+  proc gzclose:gz_file = "gzclose($1);";
+
+
+  //$ return 'length' bytes of data in carray and return
+  gen gzreader(file:gz_file,length:size) () = {
+    var buffer:carray[char] = array_alloc[char](length);
+    while true do
+      var err = 0;                    
+      var bytes_read = 0;
+      //var length = 1000;
+      //var buffer:carray[char] = array_alloc[char](length);
+      assert(not isNULL(memset(address(buffer),0,length)));
+      bytes_read = gzread (file, buffer, length - 1);
+      //set(buffer,bytes_read,char(0));
+      yield(GZ_OK (bytes_read,buffer));
+      if bytes_read < (int(length) - 1) do
+        if gzeof (file) do
+          goto eof;
+        else 
+          var error_string = gzerror (file,&err);
+          if err > 0 do
+            return GZ_ERR[+char] (err,error_string);
+          done
+        done
+      done
+    done
+eof:>
+
+    return GZ_NONE[carray[char]];        
+  }
+// voidpc
+  gen gzwrite:gz_file*+char*size->int = "gzwrite($1,$2, static_cast<unsigned>($3))";
+
+  gen gzflush:gz_file*int->int = "gzflush($1,$2)";
+
+  gen memset:address * int * size -> address = "::std::memset($a)" requires Cxx_headers::cstring;
+}
+
+
