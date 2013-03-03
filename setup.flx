@@ -4,55 +4,13 @@ BUILD_LIKE = Lib;
  
 open PkgTool;
 open Filename;
-//$ By default setup will statically compile each .flx file in the bin dir
-//$ if you need to do something special in each phase, create an proc instance
-//$ for that phase. phases are build, test, install and clean.
-//$ You will probably want to call default_<phase> at the end of your instace
-//$ if you still want to default behavior to be preformed in addition to
-//$ your special sauce.
 
 instance PkgTool {
 
   proc build () {
-    task("Determining zlib configuration");
-    var inc = "zlib.h";
-    var includes = "";
-    for path in list ("/usr/include","/usr/local/include",EXTRA_INCDIR) do
-      match filetype(path.join(inc)) with
-      |REGULAR => { includes = path; goto found_zlib_h; }
-      |SYMLINK => { includes = path; goto found_zlib_h; }
-      |_ => {}
-      endmatch;
-    done
-    setup_fail("Unable to find zlib.h. Please locate and pass path to setup with the -L switch");
-    setup_fail("Unable to find zlib.h. Please locate and pass path to setup with the -L switch");
-found_zlib_h:>
-    var lib_path = "";
-    for path in list ("/lib","/usr/lib","/usr/local/lib",EXTRA_LIBDIR) do
-      match filetype(path.join("libz.so")) with
-      |REGULAR => { EXTRA_LIBDIR = "-L" + path; goto found_zlib; }
-      |SYMLINK => { EXTRA_LIBDIR = "-L" + path; goto found_zlib; }
-      |_ => { }
-      endmatch;
-    done
-    setup_fail("Unable to find libz.so. Please locate and pass path to setup with the -L switch");
-found_zlib:>
-    task("Creating config/gz.fpc");
-    var gz_fpc:ofile = fopen_output((BUILD_DIR.join("config")).join(NAME + ".fpc"));
-    if valid(gz_fpc) do
-      var gz_fpc_s:string = q"""
-cflags: $(EXTRA_INCDIR)
-provides_dlib: $(EXTRA_LIBDIR) -lz
-provides_slib: $(EXTRA_LIBDIR) -lz
-includes: <zlib.h>  
-includes: <zconf.h> 
-""";
-    write (gz_fpc,gz_fpc_s);
-    fclose(gz_fpc);
-  else
-    red("Failed creating gz.fpc");endl;System::exit(-1);
-  done 
-   default_build();
+    create_config("gl",list("zlib.h","zconf.h"),
+                  list("libz"+#Config::config.EXT_SHLIB),Empty[string]);
+    default_build();
   }
 
 }
