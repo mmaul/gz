@@ -8,7 +8,7 @@ open Filename;
 instance PkgTool {
 
   proc build () {
-    create_config("gl",list("zlib.h","zconf.h"),
+    create_config("gz",list("zlib.h","zconf.h"),
                   list("libz"+#Config::config.EXT_SHLIB),Empty[string]);
     default_build();
   }
