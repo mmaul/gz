@@ -15,10 +15,10 @@ fclose(infh);
 var outfile ="test/gz.gz";
 test_title("compressing plain text file");
 var outfd = wopen(outfile);
-if not valid(outfd) do
-  test_result(false);
-  test_fail("Error opening "+outfile);
-done
+//if not valid(outfd) do
+//  test_result(false);
+//  test_fail("Error opening "+outfile);
+//done
 match gzdopen(outfd,Write) with
 |Some ?gzh => { 
   if valid(outfd) do
