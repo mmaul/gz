@@ -1,7 +1,7 @@
 //$ 01-gz-read-write.flx - test for GZ/gz
 //$ Author Mike Maul
 //$ See README.md for more details
-include "PKGTOOL/pkgtool";
+include "std/felix/pkgtool";
 open PkgTool;
 open PosixFileSystem;
 include "GZ/gz";
