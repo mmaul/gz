@@ -13,7 +13,7 @@ var infh = fopen_input(infile);
 var plain_text = load(infh);
 fclose(infh);
 var outfile ="test/gz.gz";
-var ptd = pkgtool_display("",80,"./x.txt",proc() {},proc(l:list[string]) {},proc (s:string) {});
+var ptd = pkgtool_display("",80,"./setup.log",proc() {},proc(l:list[string]) {},proc (s:string) {});
 ptd.test_title("compressing plain text file");
 var outfd = wopen(outfile);
 //if not valid(outfd) do
