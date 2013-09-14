@@ -1,7 +1,7 @@
 //$ 01-gz-read-write.flx - test for GZ/gz
 //$ Author Mike Maul
 //$ See README.md for more details
-include "std/felix/pkgtool";
+include "std/felix/pkgtool/pkgtool_base";
 open PkgTool;
 open PosixFileSystem;
 include "GZ/gz";
@@ -13,7 +13,8 @@ var infh = fopen_input(infile);
 var plain_text = load(infh);
 fclose(infh);
 var outfile ="test/gz.gz";
-test_title("compressing plain text file");
+var ptd = pkgtool_display("",80,"./x.txt",proc() {},proc(l:list[string]) {},proc (s:string) {});
+ptd.test_title("compressing plain text file");
 var outfd = wopen(outfile);
 //if not valid(outfd) do
 //  test_result(false);
@@ -63,7 +64,7 @@ test_result(true);
 
 
 var fd = open(outfile,O_RDONLY);
-test_title("Comparing compressed againt original file");
+ptd.test_title("Comparing compressed againt original file");
 match gzdopen(fd,Read) with
 |Some ?gzh => {
   var reader = gzreader(gzh,size(256));

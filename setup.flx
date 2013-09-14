@@ -1,4 +1,4 @@
-include "std/felix/pkgtool";
+include "std/felix/pkgtool/pkgtool_base";
 //$ Preforms build tasks in a way an Lib might like them done
 BUILD_LIKE = Lib;
  
@@ -9,7 +9,8 @@ instance PkgTool {
 
   proc build () {
     create_config("gz",list("zlib.h","zconf.h"),
-                  list("libz"+#Config::config.EXT_SHLIB),Empty[string]);
+                  list("libz.dylib"//+#Config::config.EXT_SHLIB
+),Empty[string]);
     default_build();
   }
 
